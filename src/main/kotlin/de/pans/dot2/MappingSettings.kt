@@ -135,6 +135,9 @@ object MappingSettings {
     }
 
     private fun backup(file: File = cache) {
+        if (file.readText() == "{}")
+            return
+
         val time = DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss_SSS").format(LocalDateTime.now())
         val backup =
             File("${BACKUP_DIR.path}/$time")
