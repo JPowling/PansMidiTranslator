@@ -3,12 +3,17 @@ package de.pans.dot2
 import de.pans.main.AskForConfirmation
 import org.json.JSONObject
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 object MappingSettings {
 
     private const val KEYMAP_CACHE = "./keymap_cache"
     private val SAVE_DIR = File("./keymaps/")
+    private val BACKUP_DIR = File("./.keymap_backups/")
 
     private val keymap: JSONObject
     private var cache = File(KEYMAP_CACHE)
@@ -21,6 +26,10 @@ object MappingSettings {
     init {
         if (!SAVE_DIR.exists()) {
             SAVE_DIR.mkdir()
+        }
+        if (!BACKUP_DIR.exists()) {
+            BACKUP_DIR.mkdir()
+            Files.setAttribute(BACKUP_DIR.toPath().toAbsolutePath(), "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
         }
         if (!cache.exists()) {
             cache.createNewFile()
@@ -88,6 +97,7 @@ object MappingSettings {
     }
 
     fun unbindAll() {
+        backup()
         keymap.clear()
         save()
     }
@@ -104,6 +114,7 @@ object MappingSettings {
                 "A file named \"$filename.txt\" already exists. " +
                         "Proceeding will result in loss of data."
             ) {
+                backup(file)
                 file.writeText(toJson)
             }
             return
@@ -118,8 +129,17 @@ object MappingSettings {
             "Loading another keymap into the cache will " +
                     "result in loss of current cache, if not saved."
         ) {
+            backup()
             cache.writeText(file.readText())
         }
+    }
+
+    private fun backup(file: File = cache) {
+        val time = DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss_SSS").format(LocalDateTime.now())
+        val backup =
+            File("${BACKUP_DIR.path}/$time")
+
+        file.copyTo(backup)
     }
 
     fun deleteFile(filename: String) {
