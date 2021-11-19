@@ -22,9 +22,7 @@ class MidiConnectionOutput(devInfo: MidiDevice.Info) : MidiConnectionIO(devInfo)
         load()
     }
 
-    fun send(bytes: List<Byte>) {
-        val bytes = bytes.map { it.toInt() }
-
+    fun send(bytes: List<Int>) {
         device.receiver.send(ShortMessage(bytes[0], bytes[1], bytes[2]), -1)
     }
 

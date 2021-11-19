@@ -139,25 +139,9 @@ object MappingSettings {
             return
 
         val time = DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss_SSS").format(LocalDateTime.now())
-        val backup =
-            File("${BACKUP_DIR.path}/$time")
+        val backup = File("${BACKUP_DIR.path}/$time")
 
         file.copyTo(backup)
-    }
-
-    fun deleteFile(filename: String) {
-        val file = File("./keymaps/$filename.txt")
-
-        AskForConfirmation(
-            "Loading another keymap into the cache will " +
-                    "result in loss of current cache, if not saved."
-        ) {
-            try {
-                file.delete()
-            } catch (e: Exception) {
-                println("Failed to delete.")
-            }
-        }
     }
 
 }

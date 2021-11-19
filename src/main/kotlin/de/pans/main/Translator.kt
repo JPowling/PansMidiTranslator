@@ -15,13 +15,16 @@ val scanner = Scanner(System.`in`)
 fun main(args: Array<String>) {
     MappingSettings // Load
 
-    val output = MidiConnectionOutput.openConnection("loop")
+    val loopMidi = MidiConnectionOutput.openConnection("loop")
+    val feedback = MidiConnectionOutput.openConnection("nanokontrol")
     val input = MidiConnectionInput.openConnection("nanokontrol") {
         val bytes = Dot2Mapper.map(it)
 
+        feedback.send(it.map { it.toInt() })
+
         if (!setup) {
             if (bytes.size == 3) {
-                output.send(bytes)
+                loopMidi.send(bytes.map { it.toInt() })
             }
         } else {
             when (MappingSettings.bindNext(it[1])) {
