@@ -1,4 +1,4 @@
-package de.pans.midiinput
+package de.pans.midiio
 
 import java.util.*
 import javax.sound.midi.MidiMessage

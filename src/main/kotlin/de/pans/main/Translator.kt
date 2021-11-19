@@ -2,8 +2,8 @@ package de.pans.main
 
 import de.pans.dot2.Dot2Mapper
 import de.pans.dot2.MappingSettings
-import de.pans.midiinput.MidiInputConnection
-import de.pans.midioutput.MidiOutputConnection
+import de.pans.midiio.MidiConnectionInput
+import de.pans.midiio.MidiConnectionOutput
 import java.util.*
 
 private var setup = false
@@ -12,8 +12,8 @@ var suspend = false
 val scanner = Scanner(System.`in`)
 
 fun main(args: Array<String>) {
-    val output = MidiOutputConnection.openConnection("loop")
-    val input = MidiInputConnection.openConnection("nanokontrol") {
+    val output = MidiConnectionOutput.openConnection("loop")
+    val input = MidiConnectionInput.openConnection("nanokontrol") {
         val bytes = Dot2Mapper.map(it)
 
         if (!setup) {

@@ -1,11 +1,11 @@
-package de.pans.midiinput
+package de.pans.midiio
 
 import de.pans.dot2.Dot2Mapper
 import java.util.*
 
 fun main(args: Array<String>) {
 
-    val con = MidiInputConnection.openConnection("nanokontrol") {
+    val con = MidiConnectionInput.openConnection("nanokontrol") {
         println(Dot2Mapper.map(it))
     }
 
