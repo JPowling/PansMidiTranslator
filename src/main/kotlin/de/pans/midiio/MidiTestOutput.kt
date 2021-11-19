@@ -1,6 +1,4 @@
-package de.pans.midioutput
-
-import de.pans.midiio.MidiConnectionOutput
+package de.pans.midiio
 
 fun main(args: Array<String>) {
     val dev = MidiConnectionOutput.openConnection("loop")

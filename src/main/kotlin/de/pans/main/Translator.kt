@@ -1,17 +1,20 @@
 package de.pans.main
 
+import de.pans.command.Commands
 import de.pans.dot2.Dot2Mapper
 import de.pans.dot2.MappingSettings
 import de.pans.midiio.MidiConnectionInput
 import de.pans.midiio.MidiConnectionOutput
 import java.util.*
 
-private var setup = false
+var setup = false
 var suspend = false
 
 val scanner = Scanner(System.`in`)
 
 fun main(args: Array<String>) {
+    MappingSettings // Load
+
     val output = MidiConnectionOutput.openConnection("loop")
     val input = MidiConnectionInput.openConnection("nanokontrol") {
         val bytes = Dot2Mapper.map(it)
@@ -28,28 +31,8 @@ fun main(args: Array<String>) {
     }
 
     while (true) {
-        when (scanner.nextLine().lowercase().trim()) {
-            "help" -> {
-                SOS()
-            }
-            "keymap reset" -> {
-                AskForConfirmation("Proceeding will result in loss of current cache, if not saved.") {
-                    MappingSettings.unbindAll()
-                }
-            }
-            "keymap setup" -> {
-                setup = true
-            }
-            "keymap endsetup" -> {
-                setup = false
-            }
-            "file save" -> {
-                MappingSettings.saveAs(AskForInput.wait())
-            }
-            "file load" -> {
-                MappingSettings.loadFrom(AskForInput.wait())
-            }
-        }
+        val input = scanner.nextLine()
+        Commands.handle(input)
     }
 }
 
