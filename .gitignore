@@ -1,3 +1,7 @@
 /.gradle/
 /.idea/
 *.iml
+/.keymap_backups/
+/out/
+/build/
+/src/main/kotlin/META-INF/

@@ -1,12 +1,20 @@
 package de.pans.main
 
-object AskForInput {
+class AskForInput(val message: String) {
 
     fun wait(): String {
-        suspend = true
-        println("Please enter an argument: (you should know what the context is, i don't)")
+        suspend_all = true
+        println(message)
         val input = scanner.nextLine()
-        suspend = false
+        suspend_all = false
+        return input
+    }
+
+    fun waitInt(): Int {
+        suspend_all = true
+        println(message)
+        val input = scanner.nextInt()
+        suspend_all = false
         return input
     }
 

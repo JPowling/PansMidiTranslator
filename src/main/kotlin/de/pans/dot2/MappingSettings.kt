@@ -3,14 +3,19 @@ package de.pans.dot2
 import de.pans.main.AskForConfirmation
 import org.json.JSONObject
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 object MappingSettings {
 
     private const val KEYMAP_CACHE = "./keymap_cache"
     private val SAVE_DIR = File("./keymaps/")
+    private val BACKUP_DIR = File("./.keymap_backups/")
 
-    private val keymap: JSONObject
+    private var keymap: JSONObject
     private var cache = File(KEYMAP_CACHE)
 
     private val toJson: String
@@ -21,6 +26,10 @@ object MappingSettings {
     init {
         if (!SAVE_DIR.exists()) {
             SAVE_DIR.mkdir()
+        }
+        if (!BACKUP_DIR.exists()) {
+            BACKUP_DIR.mkdir()
+            Files.setAttribute(BACKUP_DIR.toPath().toAbsolutePath(), "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
         }
         if (!cache.exists()) {
             cache.createNewFile()
@@ -34,15 +43,23 @@ object MappingSettings {
         }
     }
 
-    fun isBound(input: Byte): Boolean {
+    val freeChannels: List<Int>
+        get() = (0..128).filter { !isBoundValue(it) }
+
+    fun isBound(input: Int): Boolean {
         return keymap.has(input.toString())
     }
 
-    fun isBoundValue(output: Byte): Boolean {
+    fun isBoundValue(output: Int): Boolean {
         return keymap.toMap().values.contains(output.toString())
     }
 
-    fun bind(input: Byte, output: Byte): Boolean {
+    fun isValidMIDIChannel(toCheck: Int) = toCheck in 0..128
+
+    fun bind(input: Int, output: Int, overwrite: Boolean = false): Boolean {
+        if (isBoundValue(output) && overwrite) {
+            unbind(getWhatsBoundTo(output))
+        }
         if (!isBound(input)) {
             keymap.put(input.toString(), output.toString())
             save()
@@ -51,7 +68,7 @@ object MappingSettings {
         return false
     }
 
-    fun unbind(input: Byte): Boolean {
+    fun unbind(input: Int): Boolean {
         if (isBound(input)) {
             keymap.remove(input.toString())
             save()
@@ -60,34 +77,43 @@ object MappingSettings {
         return false
     }
 
-    fun bindNext(input: Byte): Int {
+    fun bindNext(input: Int): Int {
         if (isBound(input)) {
-            return 0
+            return -1
         }
 
         var count = -1
 
         for (i in 0..127) {
-            if (!isBoundValue(i.toByte())) {
-                println(i)
+            if (!isBoundValue(i)) {
                 count = i
                 break
             }
         }
         if (count == -1) {
-            return 2
+            return -2
         }
 
-        bind(input, count.toByte())
-
-        return 1
+        bind(input, count)
+        return count
     }
 
-    fun getBind(input: Byte): Byte {
-        return keymap.getInt(input.toString()).toByte()
+    fun getBind(input: Int): Int {
+        if (!isBound(input)) {
+            return -1
+        }
+        return keymap.getInt(input.toString())
+    }
+
+    fun getWhatsBoundTo(output: Int): Int {
+        if (!isBoundValue(output)) {
+            return -1
+        }
+        return keymap.toMap().filter { it.value.toString().toInt() == output }.map { it.key.toInt() }.firstOrNull()!!
     }
 
     fun unbindAll() {
+        backup()
         keymap.clear()
         save()
     }
@@ -104,6 +130,7 @@ object MappingSettings {
                 "A file named \"$filename.txt\" already exists. " +
                         "Proceeding will result in loss of data."
             ) {
+                backup(file)
                 file.writeText(toJson)
             }
             return
@@ -114,27 +141,30 @@ object MappingSettings {
     fun loadFrom(filename: String) {
         val file = File("./keymaps/$filename.txt")
 
+        if (!file.exists()) {
+            println("A save called '$filename' was not found!")
+            return
+        }
+
         AskForConfirmation(
             "Loading another keymap into the cache will " +
                     "result in loss of current cache, if not saved."
         ) {
-            cache.writeText(file.readText())
+            backup()
+            val content = file.readText()
+            cache.writeText(content)
+            keymap = JSONObject(content)
         }
     }
 
-    fun deleteFile(filename: String) {
-        val file = File("./keymaps/$filename.txt")
+    private fun backup(file: File = cache) {
+        if (file.readText() == "{}")
+            return
 
-        AskForConfirmation(
-            "Loading another keymap into the cache will " +
-                    "result in loss of current cache, if not saved."
-        ) {
-            try {
-                file.delete()
-            } catch (e: Exception) {
-                println("Failed to delete.")
-            }
-        }
+        val time = DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss_SSS").format(LocalDateTime.now())
+        val backup = File("${BACKUP_DIR.path}/$time")
+
+        file.copyTo(backup)
     }
 
 }

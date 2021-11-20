@@ -1,9 +1,9 @@
 package de.pans.main
 
-class AskForConfirmation(val confirmationMessage: String, run: () -> Unit) {
+class AskForConfirmation(private val confirmationMessage: String, run: () -> Unit) {
 
     init {
-        suspend = true
+        suspend_all = true
 
         sendMessage()
 
@@ -21,7 +21,7 @@ class AskForConfirmation(val confirmationMessage: String, run: () -> Unit) {
                 sendMessage()
             }
         }
-        suspend = false
+        suspend_all = false
     }
 
     private fun sendMessage() {
