@@ -2,3 +2,6 @@
 /.idea/
 *.iml
 /.keymap_backups/
+/out/
+/build/
+*.MF

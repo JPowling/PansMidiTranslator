@@ -2,6 +2,7 @@ package de.pans.midiio
 
 import javax.sound.midi.MidiDevice
 import javax.sound.midi.MidiSystem
+import javax.sound.midi.MidiUnavailableException
 import javax.sound.midi.ShortMessage
 
 class MidiConnectionOutput(devInfo: MidiDevice.Info) : MidiConnectionIO(devInfo) {
@@ -14,7 +15,11 @@ class MidiConnectionOutput(devInfo: MidiDevice.Info) : MidiConnectionIO(devInfo)
         }
 
         fun openConnection(id: String): MidiConnectionOutput {
-            return openConnection(search(id, true))
+            try {
+                return openConnection(search(id, true))
+            } catch (e: ArrayIndexOutOfBoundsException) {
+                throw MidiUnavailableException("MIDI device $id not found!")
+            }
         }
     }
 

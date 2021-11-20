@@ -1,9 +1,6 @@
 package de.pans.midiio
 
-import javax.sound.midi.MidiDevice
-import javax.sound.midi.MidiMessage
-import javax.sound.midi.MidiSystem
-import javax.sound.midi.Receiver
+import javax.sound.midi.*
 
 @Suppress("MemberVisibilityCanBePrivate")
 class MidiConnectionInput private constructor(
@@ -19,7 +16,11 @@ class MidiConnectionInput private constructor(
         }
 
         fun openConnection(id: String, handle: (List<Byte>) -> Unit): MidiConnectionInput {
-            return openConnection(search(id, false), handle)
+            try {
+                return openConnection(search(id, false), handle)
+            } catch (e: ArrayIndexOutOfBoundsException) {
+                throw MidiUnavailableException("MIDI device $id not found!")
+            }
         }
 
     }
