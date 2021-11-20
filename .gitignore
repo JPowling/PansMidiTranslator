@@ -4,4 +4,4 @@
 /.keymap_backups/
 /out/
 /build/
-*.MF
+/src/main/kotlin/META-INF/

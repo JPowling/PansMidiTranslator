@@ -14,7 +14,7 @@ var state = State.RUN
         field = value
         State.updateMessage()
     }
-var suspend = false
+var suspend_all = false
 
 var lastNanoKontrol2Input: NanoKontrol2? = null
 lateinit var nanoKontrol2: MidiConnectionInput
@@ -30,6 +30,9 @@ fun main(args: Array<String>) {
         val bytes = Dot2Mapper.map(it)
 
         feedback.send(it)
+
+        if (suspend_all)
+            return@openConnection
 
         val nanoKontrol2 = NanoKontrol2.getByID(it[1])
 
@@ -77,7 +80,6 @@ enum class State {
     VIEWBINDS,
     SETUP,
     RUN,
-
     ;
 
     companion object {
