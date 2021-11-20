@@ -126,6 +126,11 @@ object MappingSettings {
     fun loadFrom(filename: String) {
         val file = File("./keymaps/$filename.txt")
 
+        if (!file.exists()) {
+            println("A save called '$filename' was not found!")
+            return
+        }
+
         AskForConfirmation(
             "Loading another keymap into the cache will " +
                     "result in loss of current cache, if not saved."
