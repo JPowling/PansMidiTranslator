@@ -15,7 +15,7 @@ object MappingSettings {
     private val SAVE_DIR = File("./keymaps/")
     private val BACKUP_DIR = File("./.keymap_backups/")
 
-    private val keymap: JSONObject
+    private var keymap: JSONObject
     private var cache = File(KEYMAP_CACHE)
 
     private val toJson: String
@@ -42,6 +42,9 @@ object MappingSettings {
             JSONObject()
         }
     }
+
+    val freeChannels: List<Int>
+        get() = (0..128).filter { !isBoundValue(it) }
 
     fun isBound(input: Int): Boolean {
         return keymap.has(input.toString())
@@ -136,7 +139,9 @@ object MappingSettings {
                     "result in loss of current cache, if not saved."
         ) {
             backup()
-            cache.writeText(file.readText())
+            val content = file.readText()
+            cache.writeText(content)
+            keymap = JSONObject(content)
         }
     }
 
