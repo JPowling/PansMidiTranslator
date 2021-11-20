@@ -1,6 +1,6 @@
 package de.pans.main
 
-class AskForConfirmation(val confirmationMessage: String, run: () -> Unit) {
+class AskForConfirmation(private val confirmationMessage: String, run: () -> Unit) {
 
     init {
         suspend_all = true

@@ -4,11 +4,11 @@ import de.pans.midiio.MidiConnectionInput
 
 object AskForMIDIInput {
 
-    fun wait(msg: String, midiIn: MidiConnectionInput): Pair<Int, Int> {
-        suspend_all = true
+    fun wait(msg: String, midiIn: MidiConnectionInput, blockInputs: Boolean = true): Pair<Int, Int> {
+        if (blockInputs) suspend_all = true
         println(msg)
         val input = midiIn.getNextInput()
-        suspend_all = false
+        if (blockInputs) suspend_all = false
         return Pair(input[1], input[2])
     }
 

@@ -54,7 +54,12 @@ object MappingSettings {
         return keymap.toMap().values.contains(output.toString())
     }
 
-    fun bind(input: Int, output: Int): Boolean {
+    fun isValidMIDIChannel(toCheck: Int) = toCheck in 0..128
+
+    fun bind(input: Int, output: Int, overwrite: Boolean = false): Boolean {
+        if (isBoundValue(output) && overwrite) {
+            unbind(getWhatsBoundTo(output))
+        }
         if (!isBound(input)) {
             keymap.put(input.toString(), output.toString())
             save()
@@ -98,6 +103,13 @@ object MappingSettings {
             return -1
         }
         return keymap.getInt(input.toString())
+    }
+
+    fun getWhatsBoundTo(output: Int): Int {
+        if (!isBoundValue(output)) {
+            return -1
+        }
+        return keymap.toMap().filter { it.value.toString().toInt() == output }.map { it.key.toInt() }.firstOrNull()!!
     }
 
     fun unbindAll() {
