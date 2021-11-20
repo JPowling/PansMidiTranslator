@@ -43,15 +43,15 @@ object MappingSettings {
         }
     }
 
-    fun isBound(input: Byte): Boolean {
+    fun isBound(input: Int): Boolean {
         return keymap.has(input.toString())
     }
 
-    fun isBoundValue(output: Byte): Boolean {
+    fun isBoundValue(output: Int): Boolean {
         return keymap.toMap().values.contains(output.toString())
     }
 
-    fun bind(input: Byte, output: Byte): Boolean {
+    fun bind(input: Int, output: Int): Boolean {
         if (!isBound(input)) {
             keymap.put(input.toString(), output.toString())
             save()
@@ -60,7 +60,7 @@ object MappingSettings {
         return false
     }
 
-    fun unbind(input: Byte): Boolean {
+    fun unbind(input: Int): Boolean {
         if (isBound(input)) {
             keymap.remove(input.toString())
             save()
@@ -69,31 +69,32 @@ object MappingSettings {
         return false
     }
 
-    fun bindNext(input: Byte): Int {
+    fun bindNext(input: Int): Int {
         if (isBound(input)) {
-            return 0
+            return -1
         }
 
         var count = -1
 
         for (i in 0..127) {
-            if (!isBoundValue(i.toByte())) {
-                println(i)
+            if (!isBoundValue(i)) {
                 count = i
                 break
             }
         }
         if (count == -1) {
-            return 2
+            return -2
         }
 
-        bind(input, count.toByte())
-
-        return 1
+        bind(input, count)
+        return count
     }
 
-    fun getBind(input: Byte): Byte {
-        return keymap.getInt(input.toString()).toByte()
+    fun getBind(input: Int): Int {
+        if (!isBound(input)) {
+            return -1
+        }
+        return keymap.getInt(input.toString())
     }
 
     fun unbindAll() {
