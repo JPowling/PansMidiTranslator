@@ -14,7 +14,7 @@ abstract class Command(val name: String, vararg val aliases: String) {
 
 object Commands {
 
-    private val commands = listOf(CommandFile, CommandKeymap)
+    private val commands = listOf(CommandKeymap, CommandFile, CommandWeb)
 
     fun handle(commandLineInput: String) {
         val args = commandLineInput.trim().split(" ").toMutableList()

@@ -1,7 +1,7 @@
 package de.pans.command
 
 import de.pans.controllers.NanoKontrol2
-import de.pans.dot2.MappingSettings
+import de.pans.dot2.Settings
 import de.pans.main.*
 
 object CommandKeymap : Command("keymap", "km") {
@@ -27,12 +27,12 @@ object CommandKeymap : Command("keymap", "km") {
                     return
                 }
                 val midiChannel = args[1].toIntOrNull()
-                if (midiChannel == null || !MappingSettings.isValidMIDIChannel(midiChannel)) {
+                if (midiChannel == null || !Settings.isValidMIDIChannel(midiChannel)) {
                     println("The MIDI channel you've inputted is in the wrong format!")
                     return
                 }
 
-                val whatsBoundTo = MappingSettings.getWhatsBoundTo(midiChannel)
+                val whatsBoundTo = Settings.getWhatsBoundTo(midiChannel)
                 if (!handleMIDIChannelAlreadyBound(midiChannel, whatsBoundTo)) {
                     return
                 }
@@ -48,14 +48,14 @@ object CommandKeymap : Command("keymap", "km") {
                 }
                 suspend_all = false
 
-                MappingSettings.bind(input, midiChannel)
+                Settings.bind(input, midiChannel)
                 println("Successfully bound $buttonName to MIDI channel $midiChannel.")
             }
             "unbind" -> {
                 suspend_all = true
                 val input = AskForMIDIInput.wait("Please press the button you want to unbind", nanoKontrol2, false)
 
-                if (MappingSettings.unbind(input.first)) {
+                if (Settings.unbind(input.first)) {
                     println("Successfully unbound button ${NanoKontrol2.getByID(input.first)}")
                     suspend_all = false
                     return
@@ -75,15 +75,11 @@ object CommandKeymap : Command("keymap", "km") {
             }
             "listfree" -> {
                 println("Unbound MIDI channels: \n" +
-                        MappingSettings
+                        Settings
                             .freeChannels
                             .chunked(35)
                             .joinToString("\n") { it.joinToString() })
                 println("-------------------------")
-            }
-            "reset" -> AskForConfirmation("Proceeding will result in loss of current cache, if not saved.") {
-                MappingSettings.unbindAll()
-                println("The keymap got resetted.")
             }
         }
     }
@@ -97,7 +93,7 @@ object CommandKeymap : Command("keymap", "km") {
                         "${NanoKontrol2.getByID(whatsBoundTo)}. Proceeding will overwrite it."
             ) {
                 proceedOverwrite = true
-                MappingSettings.unbind(MappingSettings.getWhatsBoundTo(midiChannel))
+                Settings.unbind(Settings.getWhatsBoundTo(midiChannel))
             }
         }
 
@@ -106,14 +102,14 @@ object CommandKeymap : Command("keymap", "km") {
 
     private fun handleInputAlreadyBound(input: Int, buttonName: NanoKontrol2): Boolean {
         var proceedUnbind = true
-        if (MappingSettings.isBound(input)) {
+        if (Settings.isBound(input)) {
             proceedUnbind = false
             AskForConfirmation(
                 "The button $buttonName is already bound to " +
-                        "MIDI channel ${MappingSettings.getBind(input)}! You'd have to unbind it first!"
+                        "MIDI channel ${Settings.getBind(input)}! You'd have to unbind it first!"
             ) {
                 proceedUnbind = true
-                MappingSettings.unbind(input)
+                Settings.unbind(input)
             }
         }
 
@@ -124,7 +120,6 @@ object CommandKeymap : Command("keymap", "km") {
         println(
             """Usage of 'keymap':
             |keymap setup: Enter/Leave setup mode. Now press the buttons you wish to add to the keymap. [toggleable]
-            |keymap reset: Reset keymap.
             |keymap view: Enter/Leave viewbinds mode. Press the buttons you want to know what they are mapped to. [toggleable]
             |keymap bind <MIDI channel>: Next MIDI Input will be bound to MIDI channel
             |keymap unbind: Next MIDI Input will be unbound.

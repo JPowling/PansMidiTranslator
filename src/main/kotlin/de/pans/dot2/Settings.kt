@@ -7,21 +7,27 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.*
 
-object MappingSettings {
+object Settings {
 
-    private const val KEYMAP_CACHE = "./keymap_cache"
-    private val SAVE_DIR = File("./keymaps/")
-    private val BACKUP_DIR = File("./.keymap_backups/")
+    private const val KEYMAP_CACHE = "./settings_cache"
+    private val SAVE_DIR = File("./settings/")
+    private val BACKUP_DIR = File("./.settings_backups/")
 
-    private var keymap: JSONObject
     private var cache = File(KEYMAP_CACHE)
 
-    private val toJson: String
+    private lateinit var settings: JSONObject
+    private val keymap: JSONObject
         get() {
-            return keymap.toString()
+            return settings.run {
+                if (!has("keymap"))
+                    put("keymap", JSONObject())
+                getJSONObject("keymap")
+            }
         }
+
+    private val toJson: String
+        get() = settings.toString()
 
     init {
         if (!SAVE_DIR.exists()) {
@@ -29,22 +35,25 @@ object MappingSettings {
         }
         if (!BACKUP_DIR.exists()) {
             BACKUP_DIR.mkdir()
-            Files.setAttribute(BACKUP_DIR.toPath().toAbsolutePath(), "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
+
+            try {
+                Files.setAttribute(BACKUP_DIR.toPath().toAbsolutePath(), "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
+            } catch (e: Exception) {
+                // I don't know if this throws an exception when using linux but i'll catch it anyways
+            }
         }
+
         if (!cache.exists()) {
             cache.createNewFile()
+            default()
         }
-        val scanner = Scanner(cache)
-
-        keymap = if (scanner.hasNextLine()) {
-            JSONObject(scanner.nextLine())
-        } else {
-            JSONObject()
-        }
+        reloadCache()
     }
 
     val freeChannels: List<Int>
         get() = (0..128).filter { !isBoundValue(it) }
+
+    fun isValidMIDIChannel(toCheck: Int) = toCheck in 0..128
 
     fun isBound(input: Int): Boolean {
         return keymap.has(input.toString())
@@ -53,8 +62,6 @@ object MappingSettings {
     fun isBoundValue(output: Int): Boolean {
         return keymap.toMap().values.contains(output.toString())
     }
-
-    fun isValidMIDIChannel(toCheck: Int) = toCheck in 0..128
 
     fun bind(input: Int, output: Int, overwrite: Boolean = false): Boolean {
         if (isBoundValue(output) && overwrite) {
@@ -112,10 +119,26 @@ object MappingSettings {
         return keymap.toMap().filter { it.value.toString().toInt() == output }.map { it.key.toInt() }.firstOrNull()!!
     }
 
-    fun unbindAll() {
-        backup()
-        keymap.clear()
+    fun put(key: String, value: Any) {
+        settings.put(key, value)
         save()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <T> get(key: String): T {
+        return settings.get(key) as T
+    }
+
+    fun has(key: String): Boolean {
+        return settings.has(key)
+    }
+
+    fun reset() {
+        backup()
+        settings.clear()
+        put("ip", "127.0.0.1")
+        save()
+        reloadCache()
     }
 
     private fun save() {
@@ -151,10 +174,12 @@ object MappingSettings {
                     "result in loss of current cache, if not saved."
         ) {
             backup()
-            val content = file.readText()
-            cache.writeText(content)
-            keymap = JSONObject(content)
+            cache.writeText(file.readText())
         }
+    }
+
+    private fun reloadCache() {
+        settings = JSONObject(cache.readLines().first())
     }
 
     private fun backup(file: File = cache) {
@@ -165,6 +190,10 @@ object MappingSettings {
         val backup = File("${BACKUP_DIR.path}/$time")
 
         file.copyTo(backup)
+    }
+
+    private fun default() {
+        put("ip", "127.0.0.1")
     }
 
 }

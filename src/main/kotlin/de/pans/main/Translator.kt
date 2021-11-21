@@ -3,7 +3,7 @@ package de.pans.main
 import de.pans.command.Commands
 import de.pans.controllers.NanoKontrol2
 import de.pans.dot2.Dot2Mapper
-import de.pans.dot2.MappingSettings
+import de.pans.dot2.Settings
 import de.pans.midiio.MidiConnectionInput
 import de.pans.midiio.MidiConnectionOutput
 import java.util.*
@@ -22,7 +22,7 @@ lateinit var nanoKontrol2: MidiConnectionInput
 val scanner = Scanner(System.`in`)
 
 fun main(args: Array<String>) {
-    MappingSettings // Load
+    Settings // Load
 
     val loopMidi = MidiConnectionOutput.openConnection("loop")
     val feedback = MidiConnectionOutput.openConnection("nanokontrol")
@@ -43,7 +43,7 @@ fun main(args: Array<String>) {
                 }
             }
             State.SETUP -> {
-                when (val bindID = MappingSettings.bindNext(it[1])) {
+                when (val bindID = Settings.bindNext(it[1])) {
                     -2 -> println("You've ran out of free MIDI notes!")
                     -1 -> {
                     }
@@ -54,7 +54,7 @@ fun main(args: Array<String>) {
                 if (nanoKontrol2 != lastNanoKontrol2Input) {
                     lastNanoKontrol2Input = nanoKontrol2
 
-                    val bind = MappingSettings.getBind(it[1])
+                    val bind = Settings.getBind(it[1])
 
                     if (bind == -1) {
                         println("Detected MIDI message: Button $nanoKontrol2, but it is not mapped!")
