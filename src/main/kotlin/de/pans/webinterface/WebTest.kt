@@ -9,6 +9,7 @@ import java.net.URI
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.ArrayBlockingQueue
+import kotlin.random.Random
 
 
 fun main(args: Array<String>) {
@@ -32,24 +33,32 @@ class WebSocket : WebSocketClient(URI("ws://127.0.0.1/?ma=1")) {
     lateinit var passwd: String
 
     val loginResponse = ArrayBlockingQueue<ServerResponse>(1)
+    var isLoggedIn = false
 
     fun login(passwd: String, timeout: Long): ServerResponse {
         GlobalScope.launch {
             Thread.sleep(timeout)
 
-            if (loginResponse.isEmpty()) {
+            if (!isLoggedIn && isRunning) {
                 loginResponse.put(ServerResponse.TimeOut)
+                println("Tomute")
             }
         }
 
         this.passwd = passwd
         connect()
-        val response = loginResponse.take()
-        println(response)
         return loginResponse.take()
     }
 
     override fun onOpen(handshakedata: ServerHandshake?) {
+        isRunning = true
+        log("onOpen")
+        GlobalScope.launch {
+            while (isRunning) {
+                send(Random(0).nextInt().toString())
+                Thread.sleep(1000)
+            }
+        }
     }
 
     override fun onMessage(message: String?) {
@@ -84,18 +93,26 @@ class WebSocket : WebSocketClient(URI("ws://127.0.0.1/?ma=1")) {
                 log("loginResponse: putting OK ${json.getString("responseType")}")
 
                 loginResponse.put(ServerResponse.OK)
+                isLoggedIn = true
             } else {
                 log("failed to log in")
 
                 loginResponse.put(ServerResponse.Unauthorized)
+                isRunning = false
+                close()
             }
         }
     }
 
     override fun onClose(code: Int, reason: String?, remote: Boolean) {
+        log("closing: $code $reason")
+        isRunning = false
+        log("webSocket closed")
     }
 
     override fun onError(ex: Exception?) {
+        isRunning = false
+        ex?.printStackTrace()
     }
 }
 
