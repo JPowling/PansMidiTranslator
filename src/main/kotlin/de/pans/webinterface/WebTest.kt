@@ -1,5 +1,7 @@
 package de.pans.webinterface
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import org.json.JSONObject
@@ -11,7 +13,7 @@ import java.util.concurrent.ArrayBlockingQueue
 
 fun main(args: Array<String>) {
     val client = WebSocket()
-    val loginState = client.login("81dc9bdb52d04dc20036dbd8313ed055")
+    val loginState = client.login("81dc9bdb52d04dc20036dbd8313ed055", 3000)
 
     println(loginState)
 
@@ -31,7 +33,15 @@ class WebSocket : WebSocketClient(URI("ws://127.0.0.1/?ma=1")) {
 
     val loginResponse = ArrayBlockingQueue<ServerResponse>(1)
 
-    fun login(passwd: String): ServerResponse {
+    fun login(passwd: String, timeout: Long): ServerResponse {
+        GlobalScope.launch {
+            Thread.sleep(timeout)
+
+            if (loginResponse.isEmpty()) {
+                loginResponse.put(ServerResponse.TimeOut)
+            }
+        }
+
         this.passwd = passwd
         connect()
         val response = loginResponse.take()
@@ -71,13 +81,13 @@ class WebSocket : WebSocketClient(URI("ws://127.0.0.1/?ma=1")) {
         if (json.has("responseType") && json.getString("responseType") == "login") {
             if (json.has("result") && json.getBoolean("result")) {
                 log("logged in successfully------")
-                log("loginResponse: putting OK ${json.getString("responsetype")}")
+                log("loginResponse: putting OK ${json.getString("responseType")}")
 
                 loginResponse.put(ServerResponse.OK)
             } else {
                 log("failed to log in")
 
-                loginResponse.put(ServerResponse.Undefined)
+                loginResponse.put(ServerResponse.Unauthorized)
             }
         }
     }
