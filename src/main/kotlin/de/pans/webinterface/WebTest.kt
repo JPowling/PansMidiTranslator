@@ -5,6 +5,7 @@ import kotlinx.coroutines.launch
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import org.json.JSONObject
+import java.net.ConnectException
 import java.net.URI
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -14,7 +15,7 @@ import kotlin.random.Random
 
 fun main(args: Array<String>) {
     val client = WebSocket()
-    val loginState = client.login("81dc9bdb52d04dc20036dbd8313ed055", 3000)
+    val loginState = client.login("81dc9bdb52d04dc20036dbd8313ed045", 3000)
 
     println(loginState)
 
@@ -46,7 +47,11 @@ class WebSocket : WebSocketClient(URI("ws://127.0.0.1/?ma=1")) {
         }
 
         this.passwd = passwd
-        connect()
+        try {
+            connect()
+        } catch (e: ConnectException) {
+            println(e)
+        }
         return loginResponse.take()
     }
 
@@ -74,6 +79,12 @@ class WebSocket : WebSocketClient(URI("ws://127.0.0.1/?ma=1")) {
 
         if (json.has("session")) {
             sessionNr = json.getInt("session")
+
+            if (sessionNr == -1) {
+                loginResponse.put(ServerResponse.GONE)
+                close()
+            }
+
             log("in  sessionNr=$sessionNr")
         }
 
@@ -89,7 +100,7 @@ class WebSocket : WebSocketClient(URI("ws://127.0.0.1/?ma=1")) {
 
         if (json.has("responseType") && json.getString("responseType") == "login") {
             if (json.has("result") && json.getBoolean("result")) {
-                log("logged in successfully------")
+                log("logged in successfully")
                 log("loginResponse: putting OK ${json.getString("responseType")}")
 
                 loginResponse.put(ServerResponse.OK)
@@ -124,10 +135,15 @@ private fun log(obj: Any?) {
     )
 }
 
-enum class ServerResponse(i: Int) {
+enum class ServerResponse(val i: Int) {
     Undefined(-1),
     OK(200),
     Unauthorized(401),
-    TimeOut(408)
+    TimeOut(408),
+    GONE(410),
+    ;
+    override fun toString(): String {
+        return super.toString() + "-$i"
+    }
 }
 
