@@ -36,6 +36,7 @@ object Commands {
     fun showHelp() {
         println(
             """Available Commands:
+            |(for additional help: run the command to show their help page)
             |
             |${commands.joinToString("\n") { it.name }}
             |--------------------
