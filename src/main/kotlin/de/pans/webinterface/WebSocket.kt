@@ -13,17 +13,8 @@ import java.util.concurrent.ArrayBlockingQueue
 import kotlin.random.Random
 
 
-fun main(args: Array<String>) {
-    val client = WebSocket()
-    val loginState = client.login("81dc9bdb52d04dc20036dbd8313ed045", 3000)
-
-    println(loginState)
-
-    while (true) {
-    }
-}
-
-class WebSocket : WebSocketClient(URI("ws://127.0.0.1/?ma=1")) {
+class WebSocket(var ipAddress: String = "localhost") :
+    WebSocketClient(URI("ws://$ipAddress/?ma=1")) {
 
     private var isRunning = false
     var sessionNr = 0
@@ -31,33 +22,43 @@ class WebSocket : WebSocketClient(URI("ws://127.0.0.1/?ma=1")) {
     private var requestCounter = 0
     private var maxRequests = 0
 
+    lateinit var userName: String
     lateinit var passwd: String
 
-    val loginResponse = ArrayBlockingQueue<ServerResponse>(1)
-    var isLoggedIn = false
+    private val loginResponseQueue = ArrayBlockingQueue<ServerResponse>(1)
+    val playbacksResponseQueue = ArrayBlockingQueue<JSONObject>(10)
+    private var isLoggedIn = false
 
-    fun login(passwd: String, timeout: Long): ServerResponse {
+    fun login(
+        ipAddress: String = this.ipAddress,
+        userName: String = "remote",
+        passwd: String = "81dc9bdb52d04dc20036dbd8313ed055",
+        timeout: Long = 3000,
+    ): ServerResponse {
+        super.uri = URI("ws://$ipAddress/?ma=1")
+
         GlobalScope.launch {
             Thread.sleep(timeout)
 
             if (!isLoggedIn && isRunning) {
-                loginResponse.put(ServerResponse.TimeOut)
-                println("Tomute")
+                loginResponseQueue.put(ServerResponse.TimeOut)
             }
         }
 
+        this.userName = userName
         this.passwd = passwd
+
         try {
             connect()
         } catch (e: ConnectException) {
-            println(e)
+            log(e)
+            loginResponseQueue.put(ServerResponse.INTERNAL_SERVER_ERROR)
         }
-        return loginResponse.take()
+        return loginResponseQueue.take()
     }
 
     override fun onOpen(handshakedata: ServerHandshake?) {
         isRunning = true
-        log("onOpen")
         GlobalScope.launch {
             while (isRunning) {
                 send(Random(0).nextInt().toString())
@@ -81,7 +82,7 @@ class WebSocket : WebSocketClient(URI("ws://127.0.0.1/?ma=1")) {
             sessionNr = json.getInt("session")
 
             if (sessionNr == -1) {
-                loginResponse.put(ServerResponse.GONE)
+                loginResponseQueue.put(ServerResponse.GONE)
                 close()
             }
 
@@ -100,19 +101,25 @@ class WebSocket : WebSocketClient(URI("ws://127.0.0.1/?ma=1")) {
 
         if (json.has("responseType") && json.getString("responseType") == "login") {
             if (json.has("result") && json.getBoolean("result")) {
-                log("logged in successfully")
-                log("loginResponse: putting OK ${json.getString("responseType")}")
+                //logged in successfully
+//                log("loginResponse: putting OK ${json.getString("responseType")}")
 
-                loginResponse.put(ServerResponse.OK)
+                loginResponseQueue.put(ServerResponse.OK)
                 isLoggedIn = true
             } else {
-                log("failed to log in")
-
-                loginResponse.put(ServerResponse.Unauthorized)
+                // failed to login
+                loginResponseQueue.put(ServerResponse.Unauthorized)
                 isRunning = false
                 close()
             }
         }
+
+        if (json.has("responseType") && json.getString("responseType") == "playbacks") {
+            log("putting message in playbacksResponseQueue")
+            playbacksResponseQueue.put(JSONObject(message))
+        }
+
+
     }
 
     override fun onClose(code: Int, reason: String?, remote: Boolean) {
@@ -125,14 +132,20 @@ class WebSocket : WebSocketClient(URI("ws://127.0.0.1/?ma=1")) {
         isRunning = false
         ex?.printStackTrace()
     }
+
+    override fun send(text: String?) {
+        super.send(text)
+        log("out $text")
+    }
+
 }
 
 private fun log(obj: Any?) {
-    println(
-        "${
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss_SSS").format(LocalDateTime.now())
-        }: ${obj.toString()}"
-    )
+//    println(
+//        "${
+//            DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss_SSS").format(LocalDateTime.now())
+//        }: ${obj.toString()}"
+//    )
 }
 
 enum class ServerResponse(val i: Int) {
@@ -141,9 +154,10 @@ enum class ServerResponse(val i: Int) {
     Unauthorized(401),
     TimeOut(408),
     GONE(410),
+    INTERNAL_SERVER_ERROR(500)
     ;
+
     override fun toString(): String {
         return super.toString() + "-$i"
     }
 }
-
