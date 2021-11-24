@@ -1,8 +1,8 @@
 package de.pans.command
 
-import de.pans.controllers.NanoKontrol2
-import de.pans.dot2.MappingSettings
+import de.pans.dot2.Settings
 import de.pans.main.*
+import de.pans.midiio.MidiKey
 
 object CommandKeymap : Command("keymap", "km") {
     override fun handle(args: List<String>) {
@@ -11,7 +11,7 @@ object CommandKeymap : Command("keymap", "km") {
             return
         }
         when (args[0]) {
-            "setup" -> {
+            "setup", "endsetup" -> {
                 if (State.isInState(State.RUN, State.SETUP)) {
                     when (state) {
                         State.RUN -> state = State.SETUP
@@ -22,53 +22,46 @@ object CommandKeymap : Command("keymap", "km") {
                 }
             }
             "bind" -> {
-                val input = AskForMIDIInput.wait("Please press the button you want to bind", nanoKontrol2).first
-                val buttonName = NanoKontrol2.getByID(input)
-
-                if (MappingSettings.isBound(input)) {
-                    println("The button $buttonName is already bound! You have to unbind it first!")
+                if (args.size < 2) {
+                    println("You have to provide a MIDI channel!")
+                    return
+                }
+                val midiChannel = args[1].toIntOrNull()
+                if (midiChannel == null || !Settings.isValidMIDIChannel(midiChannel)) {
+                    println("The MIDI channel you've inputted is in the wrong format!")
                     return
                 }
 
-                val askForInput =
-                    AskForInput("Please type the MIDI channel number that you want $buttonName to be bound to.")
-                val int = askForInput.waitInt()
-
-                if (!MappingSettings.isValidMIDIChannel(int)) {
-                    println("The MIDI channel $int is invalid. Aborting...")
+                val whatsBoundTo = Settings.getWhatsBoundTo(midiChannel)
+                if (!handleMIDIChannelAlreadyBound(midiChannel, whatsBoundTo)) {
                     return
                 }
 
-                var proceed = true
-                val whatsBoundTo = MappingSettings.getWhatsBoundTo(int)
-                if (whatsBoundTo != -1) {
-                    proceed = false
-                    scanner.nextLine()
-                    AskForConfirmation(
-                        "MIDI channel $int is already bound to " +
-                                "${NanoKontrol2.getByID(whatsBoundTo)}. Overwrite?"
-                    ) {
-                        proceed = true
-                    }
-                }
+                val midiInputMessage = "Please press the button you want to bind to MIDI channel $midiChannel"
 
-                if (!proceed) {
-                    return
-                }
-
-                MappingSettings.bind(input, int, true)
-                println("Successfully bound $buttonName to MIDI channel $int.")
-            }
-            "unbind" -> {
                 suspend_all = true
-                val input = AskForMIDIInput.wait("Please press the button you want to unbind", nanoKontrol2, false)
-
-                if (MappingSettings.unbind(input.first)) {
-                    println("Successfully unbound button ${NanoKontrol2.getByID(input.first)}")
+                val input = AskForMIDIInput.wait(midiInputMessage, false)
+                val buttonName = input.midiKey.toControllerKey.name
+                if (!handleInputAlreadyBound(input.midiKey)) {
                     suspend_all = false
                     return
                 }
-                println("Button ${NanoKontrol2.getByID(input.first)} is not bound")
+                suspend_all = false
+
+                Settings.bindMIDI(input.midiKey, midiChannel)
+                println("Successfully bound $buttonName to MIDI channel $midiChannel.")
+            }
+            "unbind" -> {
+                suspend_all = true
+                val input = AskForMIDIInput.wait("Please press the button you want to unbind", false)
+                val buttonName = input.midiKey.toControllerKey.name
+
+                if (Settings.unbind(input.midiKey)) {
+                    println("Successfully unbound button $buttonName")
+                    suspend_all = false
+                    return
+                }
+                println("Button $buttonName is not bound")
                 suspend_all = false
             }
             "view" -> {
@@ -83,26 +76,53 @@ object CommandKeymap : Command("keymap", "km") {
             }
             "listfree" -> {
                 println("Unbound MIDI channels: \n" +
-                        MappingSettings
+                        Settings
                             .freeChannels
                             .chunked(35)
                             .joinToString("\n") { it.joinToString() })
                 println("-------------------------")
             }
-            "reset" -> AskForConfirmation("Proceeding will result in loss of current cache, if not saved.") {
-                MappingSettings.unbindAll()
-                println("The keymap got resetted.")
+        }
+    }
+
+    private fun handleMIDIChannelAlreadyBound(midiChannel: Int, whatsBoundTo: MidiKey?): Boolean {
+        var proceedOverwrite = true
+        if (whatsBoundTo != null) {
+            proceedOverwrite = false
+            AskForConfirmation(
+                "MIDI channel $midiChannel is already bound to " +
+                        "${whatsBoundTo.toControllerKey.name}. Proceeding will overwrite it."
+            ) {
+                proceedOverwrite = true
+                Settings.unbind(Settings.getWhatsBoundTo(midiChannel)!!)
             }
         }
+
+        return proceedOverwrite
+    }
+
+    private fun handleInputAlreadyBound(key: MidiKey): Boolean {
+        var proceedUnbind = true
+        if (Settings.isBound(key)) {
+            proceedUnbind = false
+            AskForConfirmation(
+                "The button ${key.toControllerKey.name} is already bound to " +
+                        "MIDI channel ${Settings.getBind(key)}! You'd have to unbind it first!"
+            ) {
+                proceedUnbind = true
+                Settings.unbind(key)
+            }
+        }
+
+        return proceedUnbind
     }
 
     override fun showHelp() {
         println(
             """Usage of 'keymap':
             |keymap setup: Enter/Leave setup mode. Now press the buttons you wish to add to the keymap. [toggleable]
-            |keymap reset: Reset keymap.
             |keymap view: Enter/Leave viewbinds mode. Press the buttons you want to know what they are mapped to. [toggleable]
-            |keymap bind: Next MIDI Input will be bound to next text input
+            |keymap bind <MIDI channel>: Next MIDI Input will be bound to MIDI channel
             |keymap unbind: Next MIDI Input will be unbound.
             |keymap listfree: Lists free MIDI channel.
         """.trimMargin()

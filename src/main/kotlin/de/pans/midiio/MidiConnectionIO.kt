@@ -34,8 +34,6 @@ open class MidiConnectionIO(val devInfo: MidiDevice.Info) {
     open fun load() {
         device = MidiSystem.getMidiDevice(devInfo)
         device.open()
-
-        println("Loaded ${devInfo.name} as ${this::class.simpleName}: ${devInfo.description}")
     }
 
 }

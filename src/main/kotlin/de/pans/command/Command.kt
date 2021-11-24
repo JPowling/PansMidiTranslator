@@ -14,7 +14,7 @@ abstract class Command(val name: String, vararg val aliases: String) {
 
 object Commands {
 
-    private val commands = listOf(CommandFile, CommandKeymap)
+    private val commands = listOf(CommandKeymap, CommandFile, CommandWeb, CommandDevice)
 
     fun handle(commandLineInput: String) {
         val args = commandLineInput.trim().split(" ").toMutableList()
@@ -36,6 +36,7 @@ object Commands {
     fun showHelp() {
         println(
             """Available Commands:
+            |(for additional help: run the command to show their help page)
             |
             |${commands.joinToString("\n") { it.name }}
             |--------------------

@@ -1,77 +1,124 @@
 package de.pans.main
 
 import de.pans.command.Commands
-import de.pans.controllers.NanoKontrol2
-import de.pans.dot2.Dot2Mapper
-import de.pans.dot2.MappingSettings
-import de.pans.midiio.MidiConnectionInput
-import de.pans.midiio.MidiConnectionOutput
+import de.pans.dot2.Settings
+import de.pans.midiio.MidiDevice
+import de.pans.midiio.MidiKey
+import de.pans.midiio.MidiMessage
 import java.util.*
+import java.util.concurrent.ArrayBlockingQueue
+import javax.sound.midi.MidiUnavailableException
 
 var state = State.RUN
     set(value) {
-        if (field == State.VIEWBINDS) lastNanoKontrol2Input = null
         field = value
         State.updateMessage()
     }
-var suspend_all = false
 
-var lastNanoKontrol2Input: NanoKontrol2? = null
-lateinit var nanoKontrol2: MidiConnectionInput
+var suspend_all = false
 
 val scanner = Scanner(System.`in`)
 
 fun main(args: Array<String>) {
-    MappingSettings // Load
+    Settings // Load
 
-    val loopMidi = MidiConnectionOutput.openConnection("loop")
-    val feedback = MidiConnectionOutput.openConnection("nanokontrol")
-    nanoKontrol2 = MidiConnectionInput.openConnection("nanokontrol") {
-        val bytes = Dot2Mapper.map(it)
+    Translator.loopMidi = MidiDevice("loopmidi", isInput = false)
 
-        feedback.send(it)
+    val devices = Settings.getList<String>("midiDevs")
+    devices.forEach {
+        try {
+            val device = MidiDevice(it)
+            Translator.midiDevs.add(device)
+        } catch (e: MidiUnavailableException) {
+            System.err.println("MIDI device '$it' couldn't be loaded.")
+            System.err.println("You have to 'dev load $it' to reload it.")
+        }
+    }
+    println("Finished loading saved MIDI devices!")
 
-        if (suspend_all)
-            return@openConnection
+    while (true) {
+        val input = scanner.nextLine()
+        Commands.handle(input)
+    }
+}
 
-        val nanoKontrol2 = NanoKontrol2.getByID(it[1])
+enum class Mode {
+    MIDI, WEB
+}
 
-        when (state) {
-            State.RUN -> {
-                if (bytes.size == 3) {
-                    loopMidi.send(bytes)
+object Translator {
+
+    val midiDevs = mutableListOf<MidiDevice>()
+    lateinit var loopMidi: MidiDevice
+
+    var waitingForNextInput = false
+    val nextInput = ArrayBlockingQueue<MidiMessage>(1)
+
+    var mode = Mode.MIDI
+
+    var lastMidiKeyInput = MidiKey("", -1)
+
+    fun onIncoming(midiMessage: MidiMessage) {
+        if (waitingForNextInput) {
+            nextInput.put(midiMessage)
+        }
+
+        if (mode == Mode.MIDI) {
+            midiMessage.apply { midiDevice.lightButton(midiKey, value) }
+
+            when (state) {
+                State.RUN -> {
+                    loopMidi.send(0x90, Settings.getBind(midiMessage.midiKey), midiMessage.value)
                 }
-            }
-            State.SETUP -> {
-                when (val bindID = MappingSettings.bindNext(it[1])) {
-                    -2 -> println("You've ran out of free MIDI notes!")
-                    -1 -> {
+                State.SETUP -> {
+                    when (val bindID = Settings.bindNext(midiMessage.midiKey)) {
+                        -2 -> println("You've ran out of free MIDI notes!")
+                        -1 -> {
+                        }
+                        else -> println("Bound MIDI Channel $bindID to ${midiMessage.midiKey}")
                     }
-                    else -> println("Bound MIDI Channel $bindID to $nanoKontrol2")
                 }
-            }
-            State.VIEWBINDS -> {
-                if (nanoKontrol2 != lastNanoKontrol2Input) {
-                    lastNanoKontrol2Input = nanoKontrol2
+                State.VIEWBINDS -> {
+                    midiMessage.midiKey.let {
+                        if (lastMidiKeyInput != it) {
+                            lastMidiKeyInput = it
 
-                    val bind = MappingSettings.getBind(it[1])
+                            val bind = Settings.getBind(it)
 
-                    if (bind == -1) {
-                        println("Detected MIDI message: Button $nanoKontrol2, but it is not mapped!")
-                    } else {
-                        println(
-                            "Detected MIDI message: Button $nanoKontrol2 " +
-                                    "is mapped to MIDI channel $bind"
-                        )
+                            if (bind == -1) {
+                                println("Detected MIDI message: Button $it, but it is not mapped!")
+                            } else {
+                                println(
+                                    "Detected MIDI message: Button $it " +
+                                            "is mapped to MIDI channel $bind"
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    while (true) {
-        val input = scanner.nextLine()
-        Commands.handle(input)
+    fun getNextInput(): MidiMessage {
+        waitingForNextInput = true
+        val input = nextInput.take()
+        waitingForNextInput = false
+        return input
+    }
+
+    fun unload(device: MidiDevice) {
+        if (midiDevs.contains(device)) {
+            device.unload()
+            midiDevs.remove(device)
+        }
+    }
+
+    fun load(device: MidiDevice): Boolean {
+        if (midiDevs.contains(device)) {
+            return false
+        }
+        return midiDevs.add(device)
     }
 }
 
