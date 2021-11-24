@@ -34,6 +34,7 @@ fun main(args: Array<String>) {
             System.err.println("You have to 'dev load $it' to reload it.")
         }
     }
+    println("Finished loading saved MIDI devices!")
 
     while (true) {
         val input = scanner.nextLine()

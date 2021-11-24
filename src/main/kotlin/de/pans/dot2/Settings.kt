@@ -160,6 +160,9 @@ object Settings {
     }
 
     fun append(key: String, value: Any) {
+        if (getList<Any>(key).contains(value)) {
+            return
+        }
         settings.append(key, value)
         save()
     }
