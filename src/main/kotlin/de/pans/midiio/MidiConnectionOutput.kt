@@ -7,6 +7,8 @@ import javax.sound.midi.ShortMessage
 
 class MidiConnectionOutput(devInfo: MidiDevice.Info) : MidiConnectionIO(devInfo) {
 
+    val name = devInfo.name
+
     companion object {
 
         fun openConnection(id: Int): MidiConnectionOutput {
@@ -29,6 +31,12 @@ class MidiConnectionOutput(devInfo: MidiDevice.Info) : MidiConnectionIO(devInfo)
 
     fun send(bytes: List<Int>) {
         device.receiver.send(ShortMessage(bytes[0], bytes[1], bytes[2]), -1)
+    }
+
+    fun send(vararg bytes: Int) {
+        if (bytes.size == 3) {
+            send(bytes.toList())
+        }
     }
 
 }

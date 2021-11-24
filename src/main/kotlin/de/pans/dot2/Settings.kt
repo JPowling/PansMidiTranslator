@@ -1,6 +1,7 @@
 package de.pans.dot2
 
 import de.pans.main.AskForConfirmation
+import de.pans.midiio.MidiKey
 import org.json.JSONObject
 import java.io.File
 import java.nio.file.Files
@@ -17,12 +18,12 @@ object Settings {
     private var cache = File(KEYMAP_CACHE)
 
     private lateinit var settings: JSONObject
-    private val keymap: JSONObject
+    private val midiKeymap: JSONObject
         get() {
             return settings.run {
-                if (!has("keymap"))
-                    put("keymap", JSONObject())
-                getJSONObject("keymap")
+                if (!has("midikeymap"))
+                    put("midikeymap", JSONObject())
+                getJSONObject("midikeymap")
             }
         }
 
@@ -55,37 +56,51 @@ object Settings {
 
     fun isValidMIDIChannel(toCheck: Int) = toCheck in 0..128
 
-    fun isBound(input: Int): Boolean {
-        return keymap.has(input.toString())
+    fun isBound(midiKey: MidiKey): Boolean {
+        if (midiKeymap.has(midiKey.deviceName)) {
+            return midiKeymap
+                .getJSONObject(midiKey.deviceName)
+                .has(midiKey.channel.toString())
+        }
+        return false
     }
 
     fun isBoundValue(output: Int): Boolean {
-        return keymap.toMap().values.contains(output.toString())
+        var assigned = false
+        for (midiDev in midiKeymap.keySet()) {
+            if (midiKeymap.getJSONObject(midiDev).toMap().values.contains(output.toString())) {
+                assigned = true
+                break
+            }
+        }
+        return assigned
     }
 
-    fun bind(input: Int, output: Int, overwrite: Boolean = false): Boolean {
+    fun bindMIDI(midiKey: MidiKey, output: Int, overwrite: Boolean = false): Boolean {
         if (isBoundValue(output) && overwrite) {
-            unbind(getWhatsBoundTo(output))
+            getWhatsBoundTo(output)?.let { unbind(it) }
         }
-        if (!isBound(input)) {
-            keymap.put(input.toString(), output.toString())
+        if (!isBound(midiKey)) {
+            midiKeymap
+                .getJSONObject(midiKey.deviceName)
+                .put(midiKey.channel.toString(), output.toString())
             save()
             return true
         }
         return false
     }
 
-    fun unbind(input: Int): Boolean {
-        if (isBound(input)) {
-            keymap.remove(input.toString())
+    fun unbind(midiKey: MidiKey): Boolean {
+        if (isBound(midiKey)) {
+            midiKeymap.getJSONObject(midiKey.deviceName).remove(midiKey.channel.toString())
             save()
             return true
         }
         return false
     }
 
-    fun bindNext(input: Int): Int {
-        if (isBound(input)) {
+    fun bindNext(midiKey: MidiKey): Int {
+        if (isBound(midiKey)) {
             return -1
         }
 
@@ -101,22 +116,37 @@ object Settings {
             return -2
         }
 
-        bind(input, count)
+        bindMIDI(midiKey, count)
         return count
     }
 
-    fun getBind(input: Int): Int {
-        if (!isBound(input)) {
+    fun getBind(midiKey: MidiKey): Int {
+        if (!isBound(midiKey)) {
             return -1
         }
-        return keymap.getInt(input.toString())
+        return midiKeymap.getJSONObject(midiKey.deviceName).getString(midiKey.channel.toString()).toInt()
     }
 
-    fun getWhatsBoundTo(output: Int): Int {
+    fun getWhatsBoundTo(output: Int): MidiKey? {
         if (!isBoundValue(output)) {
-            return -1
+            return null
         }
-        return keymap.toMap().filter { it.value.toString().toInt() == output }.map { it.key.toInt() }.firstOrNull()!!
+
+        var midiKey: MidiKey? = null
+
+        for (midiDev in midiKeymap.keySet()) {
+            val midiDevJson = midiKeymap.getJSONObject(midiDev)
+
+            val channel = midiDevJson.toMap()
+                .filter { it.value.toString().toInt() == output }
+                .map { it.key.toInt() }.firstOrNull()
+
+            if (channel != null) {
+                midiKey = MidiKey(midiDev, channel)
+            }
+        }
+
+        return midiKey
     }
 
     fun put(key: String, value: Any) {

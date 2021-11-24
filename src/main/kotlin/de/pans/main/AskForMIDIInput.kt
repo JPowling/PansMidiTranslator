@@ -1,15 +1,15 @@
 package de.pans.main
 
-import de.pans.midiio.MidiConnectionInput
+import de.pans.midiio.MidiMessage
 
 object AskForMIDIInput {
 
-    fun wait(msg: String, midiIn: MidiConnectionInput, blockInputs: Boolean = true): Pair<Int, Int> {
+    fun wait(msg: String, blockInputs: Boolean = true): MidiMessage {
         if (blockInputs) suspend_all = true
         println(msg)
-        val input = midiIn.getNextInput()
+        val input = Translator.getNextInput()
         if (blockInputs) suspend_all = false
-        return Pair(input[1], input[2])
+        return input
     }
 
 }

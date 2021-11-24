@@ -2,12 +2,16 @@ package de.pans.midiio
 
 import java.util.concurrent.ArrayBlockingQueue
 import javax.sound.midi.*
+import javax.sound.midi.MidiDevice
+import javax.sound.midi.MidiMessage
 
 @Suppress("MemberVisibilityCanBePrivate")
 class MidiConnectionInput private constructor(
     devInfo: MidiDevice.Info,
     val receiver: MidiInputReceiver
 ) : MidiConnectionIO(devInfo) {
+
+    val name = devInfo.name
 
     companion object {
 
