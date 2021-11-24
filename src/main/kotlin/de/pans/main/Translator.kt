@@ -7,6 +7,7 @@ import de.pans.midiio.MidiKey
 import de.pans.midiio.MidiMessage
 import java.util.*
 import java.util.concurrent.ArrayBlockingQueue
+import javax.sound.midi.MidiUnavailableException
 
 var state = State.RUN
     set(value) {
@@ -24,7 +25,15 @@ fun main(args: Array<String>) {
     Translator.loopMidi = MidiDevice("loopmidi", isInput = false)
 
     val devices = Settings.getList<String>("midiDevs")
-    devices.forEach { Translator.midiDevs.add(MidiDevice(it)) }
+    devices.forEach {
+        try {
+            val device = MidiDevice(it)
+            Translator.midiDevs.add(device)
+        } catch (e: MidiUnavailableException) {
+            System.err.println("MIDI device '$it' couldn't be loaded.")
+            System.err.println("You have to 'dev load $it' to reload it.")
+        }
+    }
 
     while (true) {
         val input = scanner.nextLine()
