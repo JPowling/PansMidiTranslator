@@ -29,23 +29,43 @@ class MidiDevice(name: String, isInput: Boolean = true, val isOutput: Boolean = 
     private fun handleInput(): (List<Int>) -> Unit {
         return {
             val type = it[0]
-            val channel = it[1]
+            var channel = it[1]
             var value = -1
 
             when (type) {
-                0x80 -> { // Note off
+                -128 -> { // Note off
                     value = 0
+                    // As APCMINI mapped some keys to the same channels and differenciates them
+                    // from Note on/off and CC, im adding 200 to maintain unique channel numbers
+                    channel += 200
                 }
-                0x90 -> { // Note on
+                -112 -> { // Note on
                     value = 127
+                    // As APCMINI mapped some keys to the same channels and differenciates them
+                    // from Note on/off and CC, im adding 200 to maintain unique channel numbers
+                    channel += 200
                 }
-                0xB0 -> { // Control change
+                -80 -> { // Control change / CC
                     value = it[2]
                 }
             }
 
             Translator.onIncoming(MidiMessage(MidiKey(name, channel), value))
         }
+    }
+
+    fun lightButton(key: MidiKey, lightState: Int = 127) {
+        if (key.toControllerKey.isFader) {
+            return
+        }
+
+        var c = key.channel
+        if (c > 128) {
+            c -= 200
+        }
+
+        send(0x90, c, lightState)
+        send(0xB0, c, lightState)
     }
 
     fun send(a: Int, b: Int, c: Int) {

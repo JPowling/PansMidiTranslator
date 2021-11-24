@@ -4,6 +4,7 @@ import de.pans.command.Commands
 import de.pans.dot2.Settings
 import de.pans.midiio.MidiConnectionOutput
 import de.pans.midiio.MidiDevice
+import de.pans.midiio.MidiKey
 import de.pans.midiio.MidiMessage
 import java.util.*
 import java.util.concurrent.ArrayBlockingQueue
@@ -30,6 +31,10 @@ fun main(args: Array<String>) {
     }
 }
 
+enum class Mode {
+    MIDI, WEB
+}
+
 object Translator {
 
     val midiDevs = mutableListOf<MidiDevice>()
@@ -38,12 +43,50 @@ object Translator {
     var waitingForNextInput = false
     val nextInput = ArrayBlockingQueue<MidiMessage>(1)
 
+    var mode = Mode.MIDI
+
+    var lastMidiKeyInput = MidiKey("", -1)
+
     fun onIncoming(midiMessage: MidiMessage) {
         if (waitingForNextInput) {
             nextInput.put(midiMessage)
         }
 
-        println(midiMessage)
+        if (mode == Mode.MIDI) {
+            midiMessage.apply { midiDevice.lightButton(midiKey, value) }
+
+            when (state) {
+                State.RUN -> {
+                    loopMidi.send(0x90, Settings.getBind(midiMessage.midiKey), midiMessage.value)
+                }
+                State.SETUP -> {
+                    when (val bindID = Settings.bindNext(midiMessage.midiKey)) {
+                        -2 -> println("You've ran out of free MIDI notes!")
+                        -1 -> {
+                        }
+                        else -> println("Bound MIDI Channel $bindID to ${midiMessage.midiKey}")
+                    }
+                }
+                State.VIEWBINDS -> {
+                    midiMessage.midiKey.let {
+                        if (lastMidiKeyInput != it) {
+                            lastMidiKeyInput = it
+
+                            val bind = Settings.getBind(it)
+
+                            if (bind == -1) {
+                                println("Detected MIDI message: Button $it, but it is not mapped!")
+                            } else {
+                                println(
+                                    "Detected MIDI message: Button $it " +
+                                            "is mapped to MIDI channel $bind"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fun getNextInput(): MidiMessage {
@@ -52,47 +95,6 @@ object Translator {
         waitingForNextInput = false
         return input
     }
-//    val bytes = Dot2Mapper.map(it)
-//
-//    feedback.send(it)
-//
-//    if (suspend_all)
-//        return@openConnection
-//
-//    val nanoKontrol2 = NanoKontrol2.getByID(it[1])
-//
-//    when (state) {
-//        State.RUN -> {
-//            if (bytes.size == 3) {
-//                loopMidi.send(bytes)
-//            }
-//        }
-//        State.SETUP -> {
-//            when (val bindID = Settings.bindNext(it[1])) {
-//                -2 -> println("You've ran out of free MIDI notes!")
-//                -1 -> {
-//                }
-//                else -> println("Bound MIDI Channel $bindID to $nanoKontrol2")
-//            }
-//        }
-//        State.VIEWBINDS -> {
-//            if (nanoKontrol2 != lastNanoKontrol2Input) {
-//                lastNanoKontrol2Input = nanoKontrol2
-//
-//                val bind = Settings.getBind(it[1])
-//
-//                if (bind == -1) {
-//                    println("Detected MIDI message: Button $nanoKontrol2, but it is not mapped!")
-//                } else {
-//                    println(
-//                        "Detected MIDI message: Button $nanoKontrol2 " +
-//                                "is mapped to MIDI channel $bind"
-//                    )
-//                }
-//            }
-//        }
-//    }
-
 }
 
 enum class State {

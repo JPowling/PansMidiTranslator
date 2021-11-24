@@ -35,15 +35,23 @@ fun main() {
         |
         |package de.pans.controllers
         |
-        |class ${filename}: Controller("${device.key}") {
+        |object ${filename}: Controller("${device.key}") {
         |
         |    ${
             device.value.entries
                 .toSortedSet { o1, o2 -> o1.value.compareTo(o2.value) }
-                .map { "val ${it.key} = ControllerKey(\"${it.key}\", ${it.value})" }
+                .map { "val ${it.key} = ControllerKey(\"${it.key}\", ${it.value}, ${it.key.startsWith("F")})" }
                 .joinToString("\n    ")
         }
         |
+        |    override val list: List<ControllerKey> by lazy {
+        |        val fields = javaClass.declaredFields.toList()
+        |
+        |        fields.subList(1, fields.size - 1).map {
+        |            it.isAccessible = true
+        |            it.get(this) as ControllerKey
+        |        }
+        |    }
         |}
     """.trimMargin()
 
@@ -52,5 +60,19 @@ fun main() {
         deviceFile.writeText(content)
     }
 
+    val controllerContent = """
+        |package de.pans.controllers
 
+        |open class Controller(val name: String) {
+        |
+        |    companion object {
+        |        val controllers = listOf(${devices.keys.joinToString { "C${it.replace(" ", "")}" }})
+        |    }
+        |    
+        |    open val list = emptyList<ControllerKey>()
+        |
+        |}
+    """.trimMargin()
+
+    File("$BASE_CLASSPATH/Controller.kt").writeText(controllerContent)
 }

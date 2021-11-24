@@ -81,6 +81,10 @@ object Settings {
             getWhatsBoundTo(output)?.let { unbind(it) }
         }
         if (!isBound(midiKey)) {
+            if (!midiKeymap.has(midiKey.deviceName)) {
+                midiKeymap.put(midiKey.deviceName, JSONObject())
+            }
+
             midiKeymap
                 .getJSONObject(midiKey.deviceName)
                 .put(midiKey.channel.toString(), output.toString())
