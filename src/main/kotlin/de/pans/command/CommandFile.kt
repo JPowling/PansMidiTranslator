@@ -15,15 +15,17 @@ object CommandFile : Command("file") {
                 if (args.size < 2) {
                     println("Not enough arguments!")
                 }
-                Settings.saveAs(args[1])
-                println("Saved cache to ${args[1]}")
+                val filename = args.subList(1, args.size).joinToString(" ")
+                Settings.saveAs(filename)
+                println("Saved cache to $filename")
             }
             "load" -> {
                 if (args.size < 2) {
                     println("Not enough arguments!")
                 }
-                Settings.loadFrom(args[1])
-                println("Loaded file ${args[1]}")
+                val filename = args.subList(1, args.size).joinToString(" ")
+                Settings.loadFrom(filename)
+                println("Loaded file $filename")
             }
             "reset" -> AskForConfirmation("Proceeding will result in loss of current cache, if not saved.") {
                 Settings.reset()

@@ -2,7 +2,6 @@ package de.pans.main
 
 import de.pans.command.Commands
 import de.pans.dot2.Settings
-import de.pans.midiio.MidiConnectionOutput
 import de.pans.midiio.MidiDevice
 import de.pans.midiio.MidiKey
 import de.pans.midiio.MidiMessage
@@ -22,8 +21,10 @@ val scanner = Scanner(System.`in`)
 fun main(args: Array<String>) {
     Settings // Load
 
-    Translator.midiDevs.add(MidiDevice("apc mini"))
-    Translator.midiDevs.add(MidiDevice("nanokontrol"))
+    Translator.loopMidi = MidiDevice("loopmidi", isInput = false)
+
+    val devices = Settings.getList<String>("midiDevs")
+    devices.forEach { Translator.midiDevs.add(MidiDevice(it)) }
 
     while (true) {
         val input = scanner.nextLine()
@@ -38,7 +39,7 @@ enum class Mode {
 object Translator {
 
     val midiDevs = mutableListOf<MidiDevice>()
-    val loopMidi = MidiConnectionOutput.openConnection("loopmidi")
+    lateinit var loopMidi: MidiDevice
 
     var waitingForNextInput = false
     val nextInput = ArrayBlockingQueue<MidiMessage>(1)
@@ -94,6 +95,20 @@ object Translator {
         val input = nextInput.take()
         waitingForNextInput = false
         return input
+    }
+
+    fun unload(device: MidiDevice) {
+        if (midiDevs.contains(device)) {
+            device.unload()
+            midiDevs.remove(device)
+        }
+    }
+
+    fun load(device: MidiDevice): Boolean {
+        if (midiDevs.contains(device)) {
+            return false
+        }
+        return midiDevs.add(device)
     }
 }
 

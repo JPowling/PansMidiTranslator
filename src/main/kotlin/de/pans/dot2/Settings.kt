@@ -2,6 +2,7 @@ package de.pans.dot2
 
 import de.pans.main.AskForConfirmation
 import de.pans.midiio.MidiKey
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.nio.file.Files
@@ -156,6 +157,20 @@ object Settings {
     fun put(key: String, value: Any) {
         settings.put(key, value)
         save()
+    }
+
+    fun append(key: String, value: Any) {
+        settings.append(key, value)
+        save()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <T> getList(key: String): List<T> {
+        if (!settings.has(key)) {
+            settings.put(key, JSONArray())
+        }
+
+        return settings.getJSONArray(key).toList() as List<T>
     }
 
     @Suppress("UNCHECKED_CAST")

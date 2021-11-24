@@ -39,4 +39,8 @@ class MidiConnectionOutput(devInfo: MidiDevice.Info) : MidiConnectionIO(devInfo)
         }
     }
 
+    fun close() {
+        device.close()
+    }
+
 }

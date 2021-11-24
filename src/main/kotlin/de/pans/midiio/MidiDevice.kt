@@ -2,7 +2,7 @@ package de.pans.midiio
 
 import de.pans.main.Translator
 
-class MidiDevice(name: String, isInput: Boolean = true, val isOutput: Boolean = true) {
+class MidiDevice(name: String, val isInput: Boolean = true, val isOutput: Boolean = true) {
 
     lateinit var input: MidiConnectionInput
     lateinit var output: MidiConnectionOutput
@@ -72,6 +72,29 @@ class MidiDevice(name: String, isInput: Boolean = true, val isOutput: Boolean = 
         if (isOutput) {
             output.send(listOf(a, b, c))
         }
+    }
+
+    fun reload() {
+        if (isOutput) {
+            output.reload()
+        }
+        if (isInput) {
+            input.reload()
+        }
+        println("Reloaded $name.")
+    }
+
+    fun unload() {
+        if (isOutput) {
+            output.close()
+        }
+        if (isInput) {
+            input.close()
+        }
+    }
+
+    override fun equals(other: Any?): Boolean {
+        return other is MidiDevice && name == other.name
     }
 
 }
