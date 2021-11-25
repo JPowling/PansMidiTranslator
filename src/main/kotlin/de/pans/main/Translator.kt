@@ -2,12 +2,16 @@ package de.pans.main
 
 import de.pans.command.Commands
 import de.pans.dot2.Settings
+import de.pans.dot2.WebSettings
 import de.pans.midiio.MidiDevice
 import de.pans.midiio.MidiKey
 import de.pans.midiio.MidiMessage
+import de.pans.webinterface.WebIO
 import java.util.*
 import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.LinkedBlockingDeque
 import javax.sound.midi.MidiUnavailableException
+import kotlin.concurrent.thread
 
 var state = State.RUN
     set(value) {
@@ -36,6 +40,10 @@ fun main(args: Array<String>) {
     }
     println("Finished loading saved MIDI devices!")
 
+    if (Settings.get("autoconnect")) {
+        Commands.handle("web c")
+    }
+
     while (true) {
         val input = scanner.nextLine()
         Commands.handle(input)
@@ -51,12 +59,26 @@ object Translator {
     val midiDevs = mutableListOf<MidiDevice>()
     lateinit var loopMidi: MidiDevice
 
-    var waitingForNextInput = false
-    val nextInput = ArrayBlockingQueue<MidiMessage>(1)
+    private var waitingForNextInput = false
+    private val nextInput = ArrayBlockingQueue<MidiMessage>(1)
 
     var mode = Mode.MIDI
 
-    var lastMidiKeyInput = MidiKey("", -1)
+    private var lastMidiKeyInput = MidiKey("", -1)
+    private var lastFaderWebSendTime = System.currentTimeMillis()
+    private val lastFaderWebSendDeque = LinkedBlockingDeque<FaderWebSend>()
+
+    init {
+        thread {
+            while (true) {
+                val exec = lastFaderWebSendDeque.peekFirst()
+                if (exec != null && System.currentTimeMillis() - exec.time > 15) {
+                    WebIO.sendFaderPos(exec.exec.execID, 0, exec.exec.value)
+                    lastFaderWebSendDeque.clear()
+                }
+            }
+        }
+    }
 
     fun onIncoming(midiMessage: MidiMessage) {
         if (waitingForNextInput) {
@@ -97,6 +119,40 @@ object Translator {
                     }
                 }
             }
+        } else if (mode == Mode.WEB) {
+
+            val bind = WebSettings.getBind(midiMessage.midiKey)
+
+            bind?.let {
+                if (it is WebSettings.CMD) {
+                    if (midiMessage.value == 0) {
+                        return
+                    }
+                    val cmd = it.name
+                    println("Sending command ${it.name}")
+                    if (cmd == "clear") {
+                        loopMidi.send(0x90, 21, 127)
+                        loopMidi.send(0x90, 21, 0)
+                        return
+                    }
+                    WebIO.sendCMD(it.name)
+                }
+
+                if (it is WebSettings.EXEC) {
+                    it.value = midiMessage.value / 127.0
+
+                    if (it.value == 0.0 || it.value == 1.0) {
+                        lastFaderWebSendDeque.clear()
+                    } else if (System.currentTimeMillis() - lastFaderWebSendTime < 7) {
+                        lastFaderWebSendDeque.addFirst(FaderWebSend(it, System.currentTimeMillis()))
+                        return
+                    }
+
+                    WebIO.sendFaderPos(it.execID, 0, it.value)
+                    lastFaderWebSendTime = System.currentTimeMillis()
+                }
+            }
+
         }
     }
 
@@ -158,4 +214,10 @@ enum class State {
         }
     }
 
+}
+
+private data class FaderWebSend(val exec: WebSettings.EXEC, val time: Long)
+
+fun printerr(msg: Any) {
+    System.err.println(msg)
 }

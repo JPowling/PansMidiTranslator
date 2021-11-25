@@ -10,6 +10,9 @@ object CommandKeymap : Command("keymap", "km") {
             showHelp()
             return
         }
+        if (Translator.mode != Mode.MIDI) {
+            printerr("You have to be in MIDI mode!")
+        }
         when (args[0]) {
             "setup", "endsetup" -> {
                 if (State.isInState(State.RUN, State.SETUP)) {
@@ -23,12 +26,12 @@ object CommandKeymap : Command("keymap", "km") {
             }
             "bind" -> {
                 if (args.size < 2) {
-                    println("You have to provide a MIDI channel!")
+                    printerr("You have to provide a MIDI channel!")
                     return
                 }
                 val midiChannel = args[1].toIntOrNull()
                 if (midiChannel == null || !Settings.isValidMIDIChannel(midiChannel)) {
-                    println("The MIDI channel you've inputted is in the wrong format!")
+                    printerr("The MIDI channel you've inputted is in the wrong format!")
                     return
                 }
 
@@ -61,7 +64,7 @@ object CommandKeymap : Command("keymap", "km") {
                     suspend_all = false
                     return
                 }
-                println("Button $buttonName is not bound")
+                printerr("Button $buttonName is not bound")
                 suspend_all = false
             }
             "view" -> {

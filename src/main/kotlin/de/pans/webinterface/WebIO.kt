@@ -4,7 +4,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
-class WebIO {
+object WebIO {
 
     private val webSocket: WebSocket = WebSocket()
 

@@ -13,4 +13,8 @@ data class MidiKey(val deviceName: String, val channel: Int) {
         return "($deviceName: $toControllerKey)"
     }
 
+    fun toStoreString(): String {
+        return super.toString()
+    }
+
 }

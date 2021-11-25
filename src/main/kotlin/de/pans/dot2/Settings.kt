@@ -18,7 +18,7 @@ object Settings {
 
     private var cache = File(KEYMAP_CACHE)
 
-    private lateinit var settings: JSONObject
+    internal lateinit var settings: JSONObject
     private val midiKeymap: JSONObject
         get() {
             return settings.run {
@@ -193,7 +193,7 @@ object Settings {
         reloadCache()
     }
 
-    private fun save() {
+    fun save() {
         cache.writeText(toJson)
     }
 
@@ -246,6 +246,7 @@ object Settings {
 
     private fun default() {
         put("ip", "127.0.0.1")
+        put("autoconnect", true)
     }
 
 }

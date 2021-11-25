@@ -14,10 +14,10 @@ abstract class Command(val name: String, vararg val aliases: String) {
 
 object Commands {
 
-    private val commands = listOf(CommandKeymap, CommandFile, CommandWeb, CommandDevice)
+    private val commands = listOf(CommandKeymap, CommandFile, CommandWeb, CommandDevice, CommandWebmap)
 
     fun handle(commandLineInput: String) {
-        val args = commandLineInput.trim().split(" ").toMutableList()
+        val args = commandLineInput.trim().lowercase().split(" ").toMutableList()
         val name = args[0]
         args.removeFirst()
 
@@ -28,7 +28,11 @@ object Commands {
 
         for (command in commands) {
             if (command.matches(name)) {
-                command.handle(args)
+                try {
+                    command.handle(args)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
     }

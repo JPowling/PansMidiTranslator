@@ -3,7 +3,7 @@ package de.pans
 import de.pans.webinterface.WebIO
 
 fun main(args: Array<String>) {
-    val webIO = WebIO()
+    val webIO = WebIO
     webIO.connect()
 
 //    webIO.sendButton(100, 0,0, true)

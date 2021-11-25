@@ -2,6 +2,11 @@ package de.pans.command
 
 import de.pans.MD5
 import de.pans.dot2.Settings
+import de.pans.main.Mode
+import de.pans.main.Translator
+import de.pans.main.printerr
+import de.pans.webinterface.ServerResponse
+import de.pans.webinterface.WebIO
 
 object CommandWeb : Command("web", "websetup") {
     override fun handle(args: List<String>) {
@@ -36,6 +41,54 @@ object CommandWeb : Command("web", "websetup") {
                 val ip = args[1]
                 Settings.put("ip", ip)
                 println("Successfully changed the IP address to $ip")
+            }
+            "connect", "c" -> {
+                if (Translator.mode == Mode.WEB) {
+                    println("You are already in WEB mode!")
+                    return
+                }
+
+                if (!Settings.has("passwd")) {
+                    println("You have to specify a password first! Use 'web passwd <password>'")
+                    return
+                }
+
+                val host = Settings.get<String>("ip")
+                val passwd = Settings.get<String>("passwd")
+
+                when (WebIO.connect(host, pwdHash = passwd)) {
+                    ServerResponse.OK -> {
+                        println("Successfully connected to dot2. Now changing to WEB mode.")
+                        println("You might want to setup the keymap using 'webmap'.")
+                        Translator.mode = Mode.WEB
+                    }
+                    ServerResponse.Unauthorized -> {
+                        printerr("Couldn't connect as the password is wrong!")
+                    }
+                    else -> {
+                        printerr(
+                            "An internal error occured. " +
+                                    "I won't tell you why as I don't know and I actually don't care."
+                        )
+                    }
+                }
+            }
+            "disconnect", "dc" -> {
+                if (Translator.mode == Mode.MIDI) {
+                    println("You are not connected to dot2!")
+                    return
+                }
+                Translator.mode = Mode.MIDI
+                println("Changed mode back to MIDI.")
+            }
+            "autoconnect", "ac" -> {
+                if (Settings.get("autoconnect")) {
+                    println("Turning off autoconnect!")
+                    Settings.put("autoconnect", false)
+                } else {
+                    println("Turning on autoconnect!")
+                    Settings.put("autoconnect", true)
+                }
             }
         }
     }

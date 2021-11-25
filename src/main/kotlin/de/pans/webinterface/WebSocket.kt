@@ -7,11 +7,8 @@ import org.java_websocket.handshake.ServerHandshake
 import org.json.JSONObject
 import java.net.ConnectException
 import java.net.URI
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.util.concurrent.ArrayBlockingQueue
 import kotlin.random.Random
-
 
 class WebSocket(var ipAddress: String = "localhost") :
     WebSocketClient(URI("ws://$ipAddress/?ma=1")) {
