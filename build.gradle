@@ -13,6 +13,9 @@ repositories {
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
     implementation 'org.json:json:20210307'
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0")
+    implementation 'org.java-websocket:Java-WebSocket:1.5.2'
+    implementation 'org.slf4j:slf4j-log4j12:1.7.32'
 }
 
 test {
