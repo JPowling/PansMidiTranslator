@@ -2,6 +2,7 @@ package de.pans.midiio
 
 import de.pans.controllers.Controller
 import de.pans.controllers.ControllerKey
+import de.pans.main.Translator
 
 data class MidiKey(val deviceName: String, val channel: Int) {
 
@@ -9,12 +10,12 @@ data class MidiKey(val deviceName: String, val channel: Int) {
         Controller.controllers.first { it.name == deviceName }.list.first { it.channel == channel }
     }
 
-    override fun toString(): String {
-        return "($deviceName: $toControllerKey)"
+    val device: MidiDevice by lazy {
+        Translator.midiDevs.first { it.name == deviceName }
     }
 
-    fun toStoreString(): String {
-        return super.toString()
+    override fun toString(): String {
+        return "($deviceName: $toControllerKey)"
     }
 
 }

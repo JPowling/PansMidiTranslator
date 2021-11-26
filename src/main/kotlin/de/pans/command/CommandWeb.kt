@@ -79,7 +79,17 @@ object CommandWeb : Command("web", "websetup") {
                     return
                 }
                 Translator.mode = Mode.MIDI
+                WebIO.disconnect()
                 println("Changed mode back to MIDI.")
+            }
+            "reconnect", "rc" -> {
+                if (Translator.mode != Mode.WEB) {
+                    println("You are not connected to dot2!")
+                    return
+                }
+
+                handle(listOf("dc"))
+                handle(listOf("c"))
             }
             "autoconnect", "ac" -> {
                 if (Settings.get("autoconnect")) {

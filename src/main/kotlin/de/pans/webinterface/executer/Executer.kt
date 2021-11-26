@@ -3,9 +3,7 @@ package de.pans.webinterface.executer
 abstract class Executer(
     open val execIndex: Int,
     open val pageIndex: Int,
-) {
-
-}
+)
 
 class Fader(
     override val execIndex: Int,
@@ -75,5 +73,17 @@ enum class ExecButtonType(val type: String?) {
         fun getByType(type: String): ExecButtonType {
             return values().first { it.type == type }
         }
+    }
+
+    val isRed: Boolean by lazy {
+        this in listOf(TOGGLE, PAUSE)
+    }
+
+    val isGreen: Boolean by lazy {
+        this in listOf(GO, GO_BACK, LEARN, SELECT)
+    }
+
+    val isYellow: Boolean by lazy {
+        !isRed && !isGreen
     }
 }

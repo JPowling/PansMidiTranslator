@@ -7,11 +7,12 @@ import de.pans.midiio.MidiDevice
 import de.pans.midiio.MidiKey
 import de.pans.midiio.MidiMessage
 import de.pans.webinterface.WebIO
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.util.*
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.LinkedBlockingDeque
 import javax.sound.midi.MidiUnavailableException
-import kotlin.concurrent.thread
 
 var state = State.RUN
     set(value) {
@@ -69,7 +70,9 @@ object Translator {
     private val lastFaderWebSendDeque = LinkedBlockingDeque<FaderWebSend>()
 
     init {
-        thread {
+        WebSettings.getAllExecutors()
+
+        GlobalScope.launch {
             while (true) {
                 val exec = lastFaderWebSendDeque.peekFirst()
                 if (exec != null && System.currentTimeMillis() - exec.time > 15) {
@@ -78,6 +81,49 @@ object Translator {
                 }
             }
         }
+        GlobalScope.launch {
+            while (true) {
+                Thread.sleep(1000 / 30L)
+                if (mode != Mode.WEB) {
+                    continue
+                }
+
+                val maps = WebSettings.getAllExecutors()
+
+                for (pair in maps) {
+                    val device = pair.first.device
+                    var channel = pair.first.channel
+
+                    if (channel > 128) {
+                        channel -= 200
+                    }
+
+                    val state = pair.second.readStateButton
+                    if (state == -1) {
+                        Commands.handle("web rc")
+                    }
+                    if (state == 1) {
+                        val type = pair.second.readTypeButton
+                        var colorID = 0
+
+                        type.let {
+                            when {
+                                it.isGreen -> colorID = 1
+                                it.isRed -> colorID = 3
+                                it.isYellow -> colorID = 5
+                            }
+                        }
+
+                        device.send(0x90, channel, colorID)
+                        device.send(0xB0, channel, 127)
+                    } else {
+                        device.send(0x90, channel, 0)
+                        device.send(0xB0, channel, 0)
+                    }
+                }
+            }
+        }
+
     }
 
     fun onIncoming(midiMessage: MidiMessage) {
@@ -146,6 +192,32 @@ object Translator {
                     } else if (System.currentTimeMillis() - lastFaderWebSendTime < 7) {
                         lastFaderWebSendDeque.addFirst(FaderWebSend(it, System.currentTimeMillis()))
                         return
+                    }
+
+                    if (!it.isFader) {
+                        val buttonState = it.readStateButton
+                        val buttonType = it.readTypeButton
+
+                        if (buttonType.isRed) {
+                            if (it.value == 0.0) {
+                                return
+                            }
+                            if (buttonState == 0) {
+                                WebIO.sendFaderPos(it.execID, 0, 1.0)
+                            } else {
+                                WebIO.sendFaderPos(it.execID, 0, 0.0)
+                            }
+                            return
+                        } else if (buttonType.isGreen) {
+                            if (it.value == 0.0) {
+                                return
+                            }
+
+                            WebIO.sendFaderPos(it.execID, 0, 1.0)
+                            Thread.sleep(200)
+                            WebIO.sendFaderPos(it.execID, 0, 0.0)
+                            return
+                        }
                     }
 
                     WebIO.sendFaderPos(it.execID, 0, it.value)

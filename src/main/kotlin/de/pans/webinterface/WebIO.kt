@@ -3,14 +3,13 @@ package de.pans.webinterface
 import de.pans.webinterface.executer.ExecButtonType
 import de.pans.webinterface.executer.ExecFaderType
 import org.json.JSONException
-import java.lang.Exception
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 object WebIO {
 
-    private val webSocket: WebSocket = WebSocket()
+    private var webSocket: WebSocket = WebSocket()
 
     fun connect(
         ipAddress: String = "localhost",
@@ -25,9 +24,11 @@ object WebIO {
 
     fun disconnect() {
         webSocket.close()
+        webSocket = WebSocket()
     }
 
     fun sendCMD(cmd: String) {
+        assert(webSocket.isOpen)
         webSocket.send(
             "{  \"command\":\"$cmd\"," +
                     "\"session\":${webSocket.sessionNr}," +
@@ -43,6 +44,7 @@ object WebIO {
         pageIndex: Int,
         isPressed: Boolean,
     ) {
+        assert(webSocket.isOpen)
         webSocket.send(
             "{\"requestType\":\"playbacks_userInput\"," +
                     "\"cmdline\":\"\"," +
@@ -63,6 +65,7 @@ object WebIO {
         pageIndex: Int,
         pos: Double,
     ) {
+        assert(webSocket.isOpen)
         webSocket.send(
             "{\"requestType\":\"playbacks_userInput\"," +
                     "\"execIndex\":$execIndex," +
@@ -80,6 +83,7 @@ object WebIO {
         pageIndex: Int,
         value: Double,
     ) {
+        assert(webSocket.isOpen)
         sendCMD("")
     }
 
@@ -89,6 +93,7 @@ object WebIO {
         buttonID: Int,
         pageIndex: Int,
     ): Int {
+        assert(webSocket.isOpen)
         var index = -1
 
         when (execIndex) {
@@ -169,6 +174,7 @@ object WebIO {
         buttonID: Int,
         pageIndex: Int,
     ): ExecButtonType {
+        assert(webSocket.isOpen)
         var index = -1
 
         when (execIndex) {
@@ -253,7 +259,7 @@ object WebIO {
         execIndex: Int,
         pageIndex: Int,
     ): Double {
-
+        assert(webSocket.isOpen)
         var index = -1
 
         when (execIndex) {
@@ -334,6 +340,7 @@ object WebIO {
         execIndex: Int,
         pageIndex: Int,
     ): String {
+        assert(webSocket.isOpen)
         var index = -1
 
         when (execIndex) {
@@ -382,6 +389,7 @@ object WebIO {
         execIndex: Int,
         pageIndex: Int,
     ): ExecFaderType {
+        assert(webSocket.isOpen)
         var index = -1
 
         when (execIndex) {
